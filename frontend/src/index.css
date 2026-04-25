@@ -24,7 +24,12 @@
 }
 
 body {
-  background: var(--cy-bg);
+  background-color: var(--cy-bg);
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center center;
   color: var(--cy-text);
   font-family: 'Montserrat', sans-serif;
   min-height: 100vh;
