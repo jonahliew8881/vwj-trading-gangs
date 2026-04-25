@@ -1,25 +1,21 @@
 import React, { useState } from 'react'
 import EditPositionModal from './EditPositionModal'
-import { supabase } from '../../lib/supabase'
 
 const HEADERS = [
   'Ticker','Mkt','Acct','Qty','Entry','Current',
   'Stop','Target','Commission','Net P&L','R:R','Signal'
 ]
 
+const CURRENCY_SYMBOL = { HK: 'HK$', US: '$' }
+
 export default function PositionsTable({ positions, loading, onRefresh }) {
   const [editTarget, setEditTarget] = useState(null)
 
   if (loading) return (
-    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--cy-muted)', fontFamily: "'Share Tech Mono', monospace", fontSize: '11px' }}>
-      // Loading positions...
-    </div>
+    <Empty>// Loading positions...</Empty>
   )
-
   if (positions.length === 0) return (
-    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--cy-muted)', fontFamily: "'Share Tech Mono', monospace", fontSize: '11px' }}>
-      // No open positions. Click + Add to start.
-    </div>
+    <Empty>// No open positions. Click + Add to start.</Empty>
   )
 
   return (
@@ -67,11 +63,12 @@ export default function PositionsTable({ positions, loading, onRefresh }) {
 }
 
 function PositionRow({ position: p, onEdit }) {
-  const gross = (p.current_price - p.entry_price) * p.quantity
+  const sym    = CURRENCY_SYMBOL[p.market] || 'HK$'
+  const gross  = (p.current_price - p.entry_price) * p.quantity
   const netPnL = gross - (p.commission || 0)
-  const risk = p.entry_price - p.stop_loss
+  const risk   = p.entry_price - p.stop_loss
   const reward = p.target_price - p.entry_price
-  const rr = risk > 0 ? (reward / risk).toFixed(1) : '—'
+  const rr     = risk > 0 ? (reward / risk).toFixed(1) : '—'
   const pnlPct = ((netPnL / (p.entry_price * p.quantity)) * 100).toFixed(1)
 
   const tdStyle = {
@@ -82,50 +79,43 @@ function PositionRow({ position: p, onEdit }) {
   }
 
   return (
-    <tr style={{ cursor: 'pointer' }}
+    <tr
       onMouseEnter={e => e.currentTarget.querySelectorAll('td').forEach(td => td.style.background = 'rgba(0,212,255,0.03)')}
       onMouseLeave={e => e.currentTarget.querySelectorAll('td').forEach(td => td.style.background = 'transparent')}
     >
       <td style={tdStyle}>
         <span style={{ color: 'var(--cy-accent)', fontWeight: 600, fontSize: '12px' }}>{p.ticker}</span>
       </td>
-      <td style={tdStyle}>
-        <MarketTag market={p.market} />
-      </td>
+      <td style={tdStyle}><MarketTag market={p.market} /></td>
       <td style={{ ...tdStyle, fontFamily: "'Montserrat', sans-serif", fontSize: '8px', color: 'var(--cy-muted)' }}>
         {p.account}
       </td>
       <td style={tdStyle}>{p.quantity}</td>
-      <td style={tdStyle}>{p.entry_price.toFixed(2)}</td>
-      <td style={tdStyle}>{p.current_price?.toFixed(2) ?? '—'}</td>
-      <td style={{ ...tdStyle, color: 'var(--cy-red)' }}>{p.stop_loss.toFixed(2)}</td>
-      <td style={{ ...tdStyle, color: 'var(--cy-green)' }}>{p.target_price.toFixed(2)}</td>
+      <td style={tdStyle}>{sym}{p.entry_price.toFixed(2)}</td>
+      <td style={tdStyle}>{sym}{p.current_price?.toFixed(2) ?? '—'}</td>
+      <td style={{ ...tdStyle, color: 'var(--cy-red)' }}>{sym}{p.stop_loss.toFixed(2)}</td>
+      <td style={{ ...tdStyle, color: 'var(--cy-green)' }}>{sym}{p.target_price.toFixed(2)}</td>
       <td style={{ ...tdStyle, color: 'var(--cy-red)' }}>
-        {p.commission ? `-$${p.commission.toLocaleString()}` : '—'}
+        {p.commission ? `-${sym}${p.commission.toLocaleString()}` : '—'}
       </td>
       <td style={{ ...tdStyle, color: netPnL >= 0 ? 'var(--cy-green)' : 'var(--cy-red)' }}>
-        {netPnL >= 0 ? '+' : ''}${Math.abs(netPnL).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        {netPnL >= 0 ? '+' : '-'}{sym}{Math.abs(netPnL).toLocaleString(undefined, { maximumFractionDigits: 0 })}
         <span style={{ fontSize: '9px', marginLeft: '4px' }}>
           {netPnL >= 0 ? '+' : ''}{pnlPct}%
         </span>
       </td>
       <td style={{ ...tdStyle, color: 'var(--cy-yellow)' }}>{rr}x</td>
+      <td style={tdStyle}><SignalBadge alert={p.exit_alert} /></td>
       <td style={tdStyle}>
-        <SignalBadge alert={p.exit_alert} />
-      </td>
-      <td style={tdStyle}>
-        <button
-          onClick={onEdit}
-          style={{
-            padding: '2px 7px',
-            background: 'rgba(0,212,255,0.06)',
-            border: '1px solid var(--cy-border)',
-            color: 'var(--cy-muted)',
-            fontFamily: "'Montserrat', sans-serif",
-            fontSize: '7px', fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={onEdit} style={{
+          padding: '2px 7px',
+          background: 'rgba(0,212,255,0.06)',
+          border: '1px solid var(--cy-border)',
+          color: 'var(--cy-muted)',
+          fontFamily: "'Montserrat', sans-serif",
+          fontSize: '7px', fontWeight: 700,
+          cursor: 'pointer',
+        }}>
           Edit
         </button>
       </td>
@@ -169,5 +159,17 @@ function SignalBadge({ alert }) {
     }}>
       ⚠ {alert}
     </span>
+  )
+}
+
+function Empty({ children }) {
+  return (
+    <div style={{
+      padding: '20px', textAlign: 'center',
+      color: 'var(--cy-muted)',
+      fontFamily: "'Share Tech Mono', monospace", fontSize: '11px',
+    }}>
+      {children}
+    </div>
   )
 }
