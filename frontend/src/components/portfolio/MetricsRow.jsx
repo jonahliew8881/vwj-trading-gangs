@@ -1,6 +1,13 @@
 import React from 'react'
 
-export default function MetricsRow({ totalValue, unrealizedPnL }) {
+export default function MetricsRow({ totalValue, unrealizedPnL, currency = 'HKD' }) {
+  const symbol = currency === 'HKD' ? 'HK$' : '$'
+
+  const formatVal = (v, ccy) => {
+    const sym = ccy === 'HKD' ? 'HK$' : '$'
+    return `${sym}${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  }
+
   return (
     <div style={{
       display: 'grid',
@@ -9,29 +16,29 @@ export default function MetricsRow({ totalValue, unrealizedPnL }) {
       marginBottom: '10px',
     }}>
       <MetricCard
-        label="Total Portfolio"
-        value={`$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-        sub="Open positions"
+        label="Total Portfolio (HKD)"
+        value={`HK$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+        sub="All accounts · HKD equiv."
         accent="var(--cy-green)"
         valueColor="var(--cy-green)"
       />
       <MetricCard
         label="Unrealized P&L"
-        value={`${unrealizedPnL >= 0 ? '+' : ''}$${Math.abs(unrealizedPnL).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+        value={`${unrealizedPnL >= 0 ? '+' : '-'}${formatVal(unrealizedPnL, currency)}`}
         sub="Net of commission"
         accent="var(--cy-green)"
         valueColor={unrealizedPnL >= 0 ? 'var(--cy-green)' : 'var(--cy-red)'}
       />
       <MetricCard
         label="Realized P&L (MTD)"
-        value="+$0"
-        sub="From journal"
+        value="→ Journal"
+        sub="See Journal tab"
         accent="var(--cy-accent)"
         valueColor="var(--cy-accent)"
       />
       <MetricCard
         label="Win Rate"
-        value="—"
+        value="→ Journal"
         sub="Min 30 trades"
         accent="var(--cy-yellow)"
         valueColor="var(--cy-yellow)"
@@ -65,7 +72,7 @@ function MetricCard({ label, value, sub, accent, valueColor }) {
       </div>
       <div style={{
         fontFamily: "'Share Tech Mono', monospace",
-        fontSize: '19px',
+        fontSize: '17px',
         color: valueColor,
       }}>
         {value}
