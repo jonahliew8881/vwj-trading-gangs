@@ -3,6 +3,7 @@ import MetricsRow from '../components/portfolio/MetricsRow'
 import PositionsTable from '../components/portfolio/PositionsTable'
 import PnLChart from '../components/portfolio/PnLChart'
 import AddPositionModal from '../components/portfolio/AddPositionModal'
+import CapitalPanel from '../components/portfolio/CapitalPanel'
 import { supabase } from '../lib/supabase'
 
 export default function Portfolio() {
@@ -10,10 +11,10 @@ export default function Portfolio() {
   const [activeAcct, setActiveAcct] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [activeSection, setActiveSection] = useState('positions')
+  const [usdHkdRate, setUsdHkdRate] = useState(7.8)
 
-  useEffect(() => {
-    fetchPositions()
-  }, [])
+  useEffect(() => { fetchPositions() }, [])
 
   async function fetchPositions() {
     setLoading(true)
@@ -35,42 +36,54 @@ export default function Portfolio() {
     return sum + gross - (p.commission || 0)
   }, 0)
 
-  const totalValue = positions.reduce((sum, p) => {
-    return sum + p.current_price * p.quantity
+  const totalValueHKD = positions.reduce((sum, p) => {
+    const val = p.current_price * p.quantity
+    return sum + (p.market === 'US' ? val * usdHkdRate : val)
   }, 0)
 
   return (
     <div>
       <MetricsRow
-        totalValue={totalValue}
+        totalValue={totalValueHKD}
         unrealizedPnL={totalUnrealized}
+        currency="HKD"
       />
 
-      {/* Account filter + Add button */}
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', marginBottom: '8px',
-      }}>
-        <SectionTitle>Open Positions</SectionTitle>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <AccountTabs activeAcct={activeAcct} setActiveAcct={setActiveAcct} />
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-sm"
-            style={btnSmStyle}
-          >
-            + Add
+      {/* Section switcher */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--cy-border)', marginBottom: '10px' }}>
+        {[
+          { id: 'positions', label: 'Positions' },
+          { id: 'capital',   label: 'Capital' },
+        ].map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)} style={{
+            padding: '7px 16px', background: 'none', border: 'none',
+            borderBottom: `2px solid ${activeSection === s.id ? 'var(--cy-accent)' : 'transparent'}`,
+            color: activeSection === s.id ? 'var(--cy-accent)' : 'var(--cy-muted)',
+            fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: 700,
+            letterSpacing: '2px', textTransform: 'uppercase', cursor: 'pointer',
+          }}>
+            {s.label}
           </button>
-        </div>
+        ))}
       </div>
 
-      <PositionsTable
-        positions={filtered}
-        loading={loading}
-        onRefresh={fetchPositions}
-      />
+      {activeSection === 'positions' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <SectionTitle>Open Positions</SectionTitle>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <AccountTabs activeAcct={activeAcct} setActiveAcct={setActiveAcct} />
+              <button onClick={() => setShowModal(true)} style={addBtnStyle}>+ Add</button>
+            </div>
+          </div>
+          <PositionsTable positions={filtered} loading={loading} onRefresh={fetchPositions} />
+          <PnLChart />
+        </>
+      )}
 
-      <PnLChart />
+      {activeSection === 'capital' && (
+        <CapitalPanel usdHkdRate={usdHkdRate} onRateChange={setUsdHkdRate} />
+      )}
 
       {showModal && (
         <AddPositionModal
@@ -84,13 +97,7 @@ export default function Portfolio() {
 
 function SectionTitle({ children }) {
   return (
-    <div style={{
-      fontFamily: "'Montserrat', sans-serif",
-      fontSize: '9px', fontWeight: 700,
-      letterSpacing: '3px', color: 'var(--cy-muted)',
-      textTransform: 'uppercase',
-      display: 'flex', alignItems: 'center', gap: '6px',
-    }}>
+    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '9px', fontWeight: 700, letterSpacing: '3px', color: 'var(--cy-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
       <span style={{ color: 'var(--cy-accent)', fontFamily: "'Share Tech Mono', monospace", fontSize: '10px' }}>//</span>
       {children}
     </div>
@@ -103,20 +110,14 @@ function AccountTabs({ activeAcct, setActiveAcct }) {
   return (
     <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
       {tabs.map(t => (
-        <button
-          key={t}
-          onClick={() => setActiveAcct(t)}
-          style={{
-            padding: '3px 8px',
-            border: `1px solid ${activeAcct === t ? 'var(--cy-accent)' : 'var(--cy-border)'}`,
-            background: activeAcct === t ? 'var(--cy-accent)' : 'none',
-            color: activeAcct === t ? '#000' : 'var(--cy-muted)',
-            fontFamily: "'Montserrat', sans-serif",
-            fontSize: '8px', fontWeight: 700,
-            letterSpacing: '1px', textTransform: 'uppercase',
-            cursor: 'pointer', transition: 'all 0.15s',
-          }}
-        >
+        <button key={t} onClick={() => setActiveAcct(t)} style={{
+          padding: '3px 8px',
+          border: `1px solid ${activeAcct === t ? 'var(--cy-accent)' : 'var(--cy-border)'}`,
+          background: activeAcct === t ? 'var(--cy-accent)' : 'none',
+          color: activeAcct === t ? '#000' : 'var(--cy-muted)',
+          fontFamily: "'Montserrat', sans-serif", fontSize: '8px', fontWeight: 700,
+          letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer',
+        }}>
           {labels[t]}
         </button>
       ))}
@@ -124,13 +125,9 @@ function AccountTabs({ activeAcct, setActiveAcct }) {
   )
 }
 
-const btnSmStyle = {
-  padding: '3px 10px',
-  background: 'rgba(0,212,255,0.06)',
-  border: '1px solid var(--cy-accent)',
-  color: 'var(--cy-accent)',
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '8px', fontWeight: 700,
-  letterSpacing: '1px', textTransform: 'uppercase',
-  cursor: 'pointer',
+const addBtnStyle = {
+  padding: '3px 10px', background: 'rgba(0,212,255,0.06)',
+  border: '1px solid var(--cy-accent)', color: 'var(--cy-accent)',
+  fontFamily: "'Montserrat', sans-serif", fontSize: '8px', fontWeight: 700,
+  letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer',
 }
