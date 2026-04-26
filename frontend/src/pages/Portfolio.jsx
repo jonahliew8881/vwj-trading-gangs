@@ -4,6 +4,7 @@ import PositionsTable from '../components/portfolio/PositionsTable'
 import PnLChart from '../components/portfolio/PnLChart'
 import AddPositionModal from '../components/portfolio/AddPositionModal'
 import CapitalPanel from '../components/portfolio/CapitalPanel'
+import OptionsPanel from '../components/portfolio/OptionsPanel'
 import { supabase } from '../lib/supabase'
 
 export default function Portfolio() {
@@ -83,6 +84,10 @@ export default function Portfolio() {
 
       {activeSection === 'capital' && (
         <CapitalPanel usdHkdRate={usdHkdRate} onRateChange={setUsdHkdRate} />
+      )}
+
+       {activeSection === 'positions' && (
+        <OptionsPanel usdRate={usdHkdRate} />
       )}
 
       {showModal && (
