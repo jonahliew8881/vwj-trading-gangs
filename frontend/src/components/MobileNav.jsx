@@ -45,6 +45,16 @@ const TABS = [
       </svg>
     ),
   },
+  {
+    id: 'options',
+    label: 'Options',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3l7.5 7.5M21 3l-7.5 7.5M3 21l7.5-7.5M21 21l-7.5-7.5"/>
+        <circle cx="12" cy="12" r="2"/>
+      </svg>
+    ),
+  },
 ]
 
 export default function MobileNav({ activeTab, setActiveTab }) {
