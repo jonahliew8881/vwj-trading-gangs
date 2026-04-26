@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import MetricsRow from '../components/portfolio/MetricsRow'
 import PositionsTable from '../components/portfolio/PositionsTable'
 import PnLChart from '../components/portfolio/PnLChart'
@@ -6,6 +6,7 @@ import AddPositionModal from '../components/portfolio/AddPositionModal'
 import CapitalPanel from '../components/portfolio/CapitalPanel'
 import OptionsPanel from '../components/portfolio/OptionsPanel'
 import { supabase } from '../lib/supabase'
+import { fetchPrices } from '../lib/priceService'
 
 export default function Portfolio() {
   const [positions, setPositions] = useState([])
@@ -14,6 +15,8 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState('positions')
   const [usdHkdRate, setUsdHkdRate] = useState(7.8)
+  const [priceRefreshing, setPriceRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => { fetchPositions() }, [])
 
@@ -27,6 +30,39 @@ export default function Portfolio() {
     if (!error) setPositions(data || [])
     setLoading(false)
   }
+
+  // Refresh live prices from FMP, update Supabase current_price
+  const refreshPrices = useCallback(async () => {
+    if (positions.length === 0) return
+    setPriceRefreshing(true)
+    try {
+      const priceMap = await fetchPrices(
+        positions.map(p => ({ ticker: p.ticker, market: p.market }))
+      )
+      if (Object.keys(priceMap).length === 0) return
+
+      // Batch update Supabase
+      const updates = positions
+        .filter(p => priceMap[p.ticker])
+        .map(p => supabase
+          .from('positions')
+          .update({ current_price: priceMap[p.ticker].price })
+          .eq('id', p.id)
+        )
+      await Promise.all(updates)
+
+      // Update local state instantly (no need to refetch)
+      setPositions(prev => prev.map(p =>
+        priceMap[p.ticker]
+          ? { ...p, current_price: priceMap[p.ticker].price }
+          : p
+      ))
+      setLastUpdated(new Date())
+    } catch (err) {
+      console.error('[Portfolio] refreshPrices error:', err)
+    }
+    setPriceRefreshing(false)
+  }, [positions])
 
   const filtered = activeAcct === 'all'
     ? positions
@@ -74,9 +110,34 @@ export default function Portfolio() {
             <SectionTitle>Open Positions</SectionTitle>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <AccountTabs activeAcct={activeAcct} setActiveAcct={setActiveAcct} />
+
+              {/* Refresh Price Button */}
+              <button
+                onClick={refreshPrices}
+                disabled={priceRefreshing}
+                style={{
+                  padding: '3px 10px',
+                  background: priceRefreshing ? 'rgba(0,212,255,0.02)' : 'rgba(0,212,255,0.06)',
+                  border: '1px solid var(--cy-accent)',
+                  color: priceRefreshing ? 'var(--cy-muted)' : 'var(--cy-accent)',
+                  fontFamily: "'Montserrat', sans-serif", fontSize: '8px', fontWeight: 700,
+                  letterSpacing: '1px', textTransform: 'uppercase', cursor: priceRefreshing ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {priceRefreshing ? '...' : '↻ Price'}
+              </button>
+
               <button onClick={() => setShowModal(true)} style={addBtnStyle}>+ Add</button>
             </div>
           </div>
+
+          {/* Last updated timestamp */}
+          {lastUpdated && (
+            <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '9px', color: 'var(--cy-muted)', marginBottom: '6px' }}>
+              PRICES UPDATED {lastUpdated.toLocaleTimeString('en-HK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+          )}
+
           <PositionsTable positions={filtered} loading={loading} onRefresh={fetchPositions} />
           <PnLChart />
         </>
