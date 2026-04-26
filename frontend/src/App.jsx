@@ -6,6 +6,7 @@ import Portfolio from './pages/Portfolio'
 import PositionSizing from './pages/PositionSizing'
 import Screener from './pages/Screener'
 import Journal from './pages/Journal'
+import Options from './pages/Options'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('portfolio')
@@ -23,6 +24,7 @@ export default function App() {
       case 'sizing':        return <PositionSizing />
       case 'screener':      return <Screener />
       case 'journal':       return <Journal />
+      case 'options':       return <Options />
       default:              return <Portfolio />
     }
   }
