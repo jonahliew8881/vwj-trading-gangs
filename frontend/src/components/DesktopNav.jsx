@@ -5,6 +5,7 @@ const TABS = [
   { id: 'sizing',    label: 'Position Sizing' },
   { id: 'screener',  label: 'Screener' },
   { id: 'journal',   label: 'Journal' },
+  { id: 'options',   label: 'Options' },
 ]
 
 export default function DesktopNav({ activeTab, setActiveTab }) {
