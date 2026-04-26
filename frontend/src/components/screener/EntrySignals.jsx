@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { fetchPrices } from '../../lib/priceService'
 import { ENTRY_STRATEGIES, MAX_SCORE } from '../../constants/strategies'
 import StockCard from './StockCard'
 
@@ -48,11 +49,24 @@ export default function EntrySignals() {
   const [marketFilter, setMarketFilter] = useState('all')
   const [scoreFilter, setScoreFilter] = useState('any')
   const [advLoaded, setAdvLoaded] = useState(false)
+  const [livePrices, setLivePrices] = useState({})
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setAdvLoaded(true), 3000)
     return () => clearTimeout(t)
   }, [])
+
+  async function refreshPrices() {
+    setRefreshing(true)
+    const targets = MOCK_STOCKS.map(s => ({
+      ticker: s.ticker.replace('.HK', ''),
+      market: s.market,
+    }))
+    const result = await fetchPrices(targets)
+    setLivePrices(result)
+    setRefreshing(false)
+  }
 
   const filtered = MOCK_STOCKS.filter(s => {
     if (marketFilter !== 'all' && s.market.toLowerCase() !== marketFilter) return false
@@ -60,6 +74,13 @@ export default function EntrySignals() {
     if (scoreFilter === '5+' && s.signals.length < 5) return false
     return true
   }).sort((a, b) => b.signals.length - a.signals.length)
+    .map(s => {
+    const key = s.ticker.replace('.HK', '')
+    const live = livePrices[key]
+    if (!live) return s
+    const chg = s.price > 0 ? ((live.price - s.price) / s.price * 100) : 0
+    return { ...s, price: live.price, chg: parseFloat(chg.toFixed(2)) }
+  })
 
   return (
     <div>
@@ -93,6 +114,22 @@ export default function EntrySignals() {
             {f}
           </FilterBtn>
         ))}
+        <button
+          onClick={refreshPrices}
+          disabled={refreshing}
+          style={{
+            marginLeft: 'auto',
+            padding: '2px 10px',
+            border: '1px solid var(--cy-accent)',
+            background: 'rgba(0,212,255,0.06)',
+            color: refreshing ? 'var(--cy-muted)' : 'var(--cy-accent)',
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: '8px', fontWeight: 700,
+            letterSpacing: '1px', cursor: refreshing ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {refreshing ? '...' : '↻ Prices'}
+        </button> 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: "'Share Tech Mono', monospace", fontSize: '8px', color: advLoaded ? 'var(--cy-green)' : 'var(--cy-muted)' }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: advLoaded ? 'var(--cy-green)' : 'var(--cy-muted)', animation: advLoaded ? 'none' : 'blink 1.2s infinite' }} />
           {advLoaded ? 'All signals loaded' : 'Advanced loading...'}
